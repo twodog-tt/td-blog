@@ -1,0 +1,137 @@
+syntax = "v1"
+
+// -------------------- 基础数据类型定义 --------------------
+type (
+	// 用户信息
+	User {
+		Id       int64  `json:"id"`
+		Username string `json:"username"`
+		Avatar   string `json:"avatar,optional"` // 可选字段
+		Bio      string `json:"bio,optional"`
+	}
+	// 文章信息
+	Article {
+		Id         int64      `json:"id"`
+		Title      string     `json:"title"`
+		Content    string     `json:"content"`
+		Summary    string     `json:"summary,optional"`
+		CoverImage string     `json:"coverImage,optional"`
+		ViewCount  int        `json:"viewCount,default=0"`
+		Status     int        `json:"status,options=0|1|2"` // 0-草稿,1-发布,2-删除
+		CreatedAt  string     `json:"createdAt,optional"` // 时间戳字符串
+		Author     User       `json:"author"` // 嵌套用户信息
+		Categories []Category `json:"categories,optional"` // 嵌套分类
+	}
+	// 分类信息
+	Category {
+		Id   int64  `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+	}
+	// 评论信息
+	Comment {
+		Id        int64  `json:"id"`
+		Content   string `json:"content"`
+		Status    int    `json:"status,options=0|1|2"` // 0-待审核,1-发布,2-删除
+		CreatedAt string `json:"createdAt,optional"`
+		User      User   `json:"user,optional"` // 登录用户信息
+		Username  string `json:"username,optional"` // 游客用户名
+	}
+	// 分页请求
+	PaginationReq {
+		Page     int `form:"page,default=1"` // 当前页码
+		PageSize int `form:"pageSize,default=10"` // 每页条数
+	}
+	// ID请求
+	IDReq {
+		Id int64 `path:"id"` // 从URL路径获取ID
+	}
+)
+
+// -------------------- 服务定义 --------------------
+//@server (
+// jwt:        Auth // 全局启用JWT鉴权
+// middleware: Logging // 全局日志中间件
+//)
+service blog-api {
+	// ========== 用户相关接口 ==========
+	@handler Register
+	post /api/users/register (UserRegisterReq) returns (User)
+
+	@handler Login
+	post /api/users/login (UserLoginReq) returns (UserLoginResp)
+
+	@handler GetUserProfile
+	get /api/users/:id (IDReq) returns (User)
+
+	// ========== 文章相关接口 ==========
+	@handler CreateArticle
+	post /api/articles (CreateArticleReq) returns (Article)
+
+	@handler GetArticle
+	get /api/articles/:id (IDReq) returns (Article)
+
+	@handler ListArticles
+	get /api/articles (ListArticlesReq) returns (ArticleListResp)
+
+	// ========== 分类相关接口 ==========
+	@handler ListCategories
+	get /api/categories returns (CategoryListResp)
+
+	// ========== 评论相关接口 ==========
+	@handler AddComment
+	post /api/articles/:id/comments (AddCommentReq) returns (Comment)
+
+	@handler ListComments
+	get /api/articles/:id/comments (PaginationReq) returns (CommentListResp)
+}
+
+// -------------------- 请求/响应补充类型 --------------------
+type (
+	// 用户注册请求
+	UserRegisterReq {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
+	}
+	// 用户登录请求
+	UserLoginReq {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	// 登录响应
+	UserLoginResp {
+		Token string `json:"token"`
+		User  User   `json:"user"`
+	}
+	// 创建文章请求
+	CreateArticleReq {
+		Title       string  `json:"title"`
+		Content     string  `json:"content"`
+		CategoryIds []int64 `json:"categoryIds,optional"` // 关联分类ID列表
+	}
+	// 文章列表请求
+	ListArticlesReq {
+		PaginationReq
+		CategoryId int64 `form:"categoryId,optional"` // 可选分类筛选
+	}
+	// 文章列表响应
+	ArticleListResp {
+		List  []Article `json:"list"`
+		Total int64     `json:"total"`
+	}
+	// 分类列表响应
+	CategoryListResp {
+		List []Category `json:"list"`
+	}
+	// 添加评论请求
+	AddCommentReq {
+		Content  string `json:"content"`
+		ParentId int64  `json:"parentId,optional"` // 回复评论的父ID
+	}
+	// 评论列表响应
+	CommentListResp {
+		List []Comment `json:"list"`
+	}
+)
+
